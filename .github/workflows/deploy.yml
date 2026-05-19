@@ -25,5 +25,8 @@ jobs:
       - name: Build static site
         run: npm run build
 
+      - name: Add 200.html for SPA routing
+        run: cp ./out/index.html ./out/200.html
+
       - name: Deploy to Surge
         run: npx surge ./out cor-e-lar.surge.sh --token ${{ secrets.SURGE_TOKEN }}

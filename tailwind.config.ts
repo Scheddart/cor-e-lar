@@ -9,9 +9,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        night: '#0A0A0A',
-        'night-soft': '#141414',
-        'night-border': '#1E1E1E',
+        night: '#000000',           // preto puro (era cinza-escuro)
+        'night-soft': '#070B1A',     // azul-marinho muito escuro (era cinza)
+        'night-border': '#0E1B3C',   // navy da marca (era cinza)
         // Nova paleta da marca
         brand: {
           navy: '#0E1B3C',      // Azul Marinho Profundo (dominante)

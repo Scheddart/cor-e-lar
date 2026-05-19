@@ -13,28 +13,86 @@ const navLinks = [
   { label: 'Contato', href: '#contato' },
 ]
 
+type Theme = 'light' | 'royal' | 'navy' | 'black'
+
+const themes: Record<Theme, { bg: string; text: string; subtext: string; border: string; cta: string; ctaHover: string }> = {
+  light: {
+    bg: 'rgba(244, 244, 242, 0.95)',
+    text: '#0E1B3C',
+    subtext: 'rgba(14, 27, 60, 0.7)',
+    border: 'rgba(14, 27, 60, 0.08)',
+    cta: '#0E1B3C',
+    ctaHover: '#1F4FBF',
+  },
+  royal: {
+    bg: 'rgba(31, 79, 191, 0.95)',
+    text: '#F4F4F2',
+    subtext: 'rgba(244, 244, 242, 0.75)',
+    border: 'rgba(244, 244, 242, 0.12)',
+    cta: '#F28C28',
+    ctaHover: '#FFA855',
+  },
+  navy: {
+    bg: 'rgba(14, 27, 60, 0.95)',
+    text: '#F4F4F2',
+    subtext: 'rgba(244, 244, 242, 0.7)',
+    border: 'rgba(244, 244, 242, 0.08)',
+    cta: '#F28C28',
+    ctaHover: '#FFA855',
+  },
+  black: {
+    bg: 'rgba(0, 0, 0, 0.85)',
+    text: '#F4F4F2',
+    subtext: 'rgba(244, 244, 242, 0.65)',
+    border: 'rgba(244, 244, 242, 0.06)',
+    cta: '#F28C28',
+    ctaHover: '#FFA855',
+  },
+}
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [visible, setVisible] = useState(false)
+  const [theme, setTheme] = useState<Theme>('navy')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Navbar aparece APÓS a animação FrameScroll terminar
     const handleScroll = () => {
       const frameSection = document.getElementById('experiencia')
+      const paleta = document.getElementById('paleta')
+      const sobre = document.getElementById('sobre')
+
+      // Visibilidade — aparece após FrameScroll
       if (!frameSection) {
         setVisible(window.scrollY > 50)
-        return
+      } else {
+        const bottom = frameSection.offsetTop + frameSection.offsetHeight
+        setVisible(window.scrollY >= bottom - window.innerHeight * 0.5)
       }
-      const bottom = frameSection.offsetTop + frameSection.offsetHeight
-      // Mostra quando o usuário passa do final da seção FrameScroll
-      setVisible(window.scrollY >= bottom - window.innerHeight * 0.3)
+
+      // Tema dinâmico baseado na seção atual sob a navbar
+      const navbarY = 40 // ponto de amostragem (~meio da navbar)
+      const sampleY = window.scrollY + navbarY
+
+      if (paleta && sampleY >= paleta.offsetTop && sampleY < paleta.offsetTop + paleta.offsetHeight) {
+        // Dentro de BrandPalette — checa se está no topo (royal) ou base (navy/black)
+        const rel = (sampleY - paleta.offsetTop) / paleta.offsetHeight
+        if (rel < 0.35) setTheme('royal')
+        else if (rel < 0.8) setTheme('navy')
+        else setTheme('black')
+      } else if (sobre && sampleY >= sobre.offsetTop) {
+        setTheme('black')
+      } else {
+        setTheme('navy')
+      }
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
     handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const t = themes[theme]
 
   const scrollToSection = (href: string) => {
     const el = document.querySelector(href)
@@ -47,9 +105,15 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 bg-[#0E1B3C]/95 backdrop-blur-xl border-b border-white/5 ${
+        className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
         }`}
+        style={{
+          background: t.bg,
+          borderColor: t.border,
+          transition:
+            'opacity 0.7s ease, transform 0.7s ease, background-color 0.5s ease, border-color 0.5s ease',
+        }}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
@@ -62,7 +126,10 @@ export default function Navbar() {
                 variant="compact"
                 className="h-10 w-auto group-hover:scale-105 transition-transform duration-300"
               />
-              <span className="hidden md:inline-block font-display text-sm tracking-[0.3em] text-brand-white/80">
+              <span
+                className="hidden md:inline-block font-display text-sm tracking-[0.3em]"
+                style={{ color: t.subtext, transition: 'color 0.5s ease' }}
+              >
                 COR &amp; LAR TINTAS
               </span>
             </button>
@@ -73,7 +140,10 @@ export default function Navbar() {
                 <button
                   key={link.href}
                   onClick={() => scrollToSection(link.href)}
-                  className="paint-underline text-sm text-brand-white/70 hover:text-brand-white transition-colors duration-200 font-body font-medium"
+                  className="paint-underline text-sm font-body font-medium"
+                  style={{ color: t.subtext, transition: 'color 0.3s ease' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = t.text)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = t.subtext)}
                 >
                   {link.label}
                 </button>
@@ -86,7 +156,10 @@ export default function Navbar() {
                 href="https://wa.me/551935732828"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#F28C28] hover:bg-[#FFA855] text-white text-sm font-body font-medium rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-[#F28C28]/30"
+                className="flex items-center gap-2 px-5 py-2.5 text-white text-sm font-body font-medium rounded-full transition-all duration-300 hover:shadow-lg"
+                style={{ background: t.cta }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = t.ctaHover)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = t.cta)}
               >
                 <Phone size={14} />
                 Fale Conosco
@@ -95,7 +168,8 @@ export default function Navbar() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden text-brand-white p-2"
+              className="lg:hidden p-2"
+              style={{ color: t.text, transition: 'color 0.5s ease' }}
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Menu"
             >

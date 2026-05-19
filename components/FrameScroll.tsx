@@ -45,10 +45,6 @@ const PHRASES = [
   },
 ]
 
-// Ponto onde o background muda de branco → azul marinho profundo
-const BG_TRANSITION_START = 0.72
-const BG_TRANSITION_END = 0.85
-
 const vertexShader = `
   varying vec2 vUv;
   void main() {
@@ -61,7 +57,6 @@ const fragmentShader = `
   uniform sampler2D tFrame;
   uniform float uAspect;
   uniform float uImageAspect;
-  uniform vec3 uBgColor;
   varying vec2 vUv;
 
   void main() {
@@ -74,14 +69,7 @@ const fragmentShader = `
       uv.x = (uv.x - 0.5) * ratio + 0.5;
     }
 
-    vec4 frameColor = texture2D(tFrame, uv);
-
-    // Detecta branco/cinza claro (fundo dos frames) e troca pela cor de fundo dinâmica
-    float whiteness = min(frameColor.r, min(frameColor.g, frameColor.b));
-    float bgMask = smoothstep(0.78, 0.95, whiteness);
-
-    vec3 finalColor = mix(frameColor.rgb, uBgColor, bgMask);
-    gl_FragColor = vec4(finalColor, 1.0);
+    gl_FragColor = texture2D(tFrame, uv);
   }
 `
 
@@ -93,8 +81,6 @@ export default function FrameScroll() {
   const texturesRef = useRef<THREE.Texture[]>([])
   const currentFrameRef = useRef(0)
   const targetFrameRef = useRef(0)
-  const targetBgRef = useRef(new THREE.Color(0xf4f4f2))
-  const currentBgRef = useRef(new THREE.Color(0xf4f4f2))
   const rafRef = useRef<number>()
   const [loadedCount, setLoadedCount] = useState(0)
   const [activePhrase, setActivePhrase] = useState<number | null>(null)
@@ -107,8 +93,13 @@ export default function FrameScroll() {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: false,
+      powerPreference: 'high-performance',
+    })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5))
     renderer.setSize(window.innerWidth, window.innerHeight)
     rendererRef.current = renderer
 
@@ -123,7 +114,6 @@ export default function FrameScroll() {
         tFrame: { value: null },
         uAspect: { value: window.innerWidth / window.innerHeight },
         uImageAspect: { value: 16 / 9 },
-        uBgColor: { value: new THREE.Color(0xf4f4f2) },
       },
     })
     materialRef.current = material
@@ -153,10 +143,6 @@ export default function FrameScroll() {
         material.uniforms.tFrame.value = tex
       }
 
-      // Smooth bg color transition
-      currentBgRef.current.lerp(targetBgRef.current, 0.08)
-      material.uniforms.uBgColor.value.copy(currentBgRef.current)
-
       renderer.render(scene, camera)
       rafRef.current = requestAnimationFrame(loop)
     }
@@ -174,12 +160,19 @@ export default function FrameScroll() {
     const loader = new THREE.TextureLoader()
     let count = 0
 
+    const maxAniso = rendererRef.current?.capabilities.getMaxAnisotropy() ?? 8
+
     for (let i = 0; i < FRAMES_COUNT; i++) {
       const num = String(i + 1).padStart(3, '0')
       loader.load(`/frames/ezgif-frame-${num}.png`, (texture) => {
-        texture.generateMipmaps = false
-        texture.minFilter = THREE.LinearFilter
+        texture.generateMipmaps = true
+        texture.minFilter = THREE.LinearMipmapLinearFilter
         texture.magFilter = THREE.LinearFilter
+        texture.anisotropy = maxAniso
+        if ('colorSpace' in texture) {
+          // @ts-ignore — Three.js r152+
+          texture.colorSpace = THREE.SRGBColorSpace
+        }
         texturesRef.current[i] = texture
         count++
         setLoadedCount(count)
@@ -214,18 +207,6 @@ export default function FrameScroll() {
       targetFrameRef.current = newTarget
       setDisplayFrame(newTarget + 1)
 
-      // Background transition
-      const bgT =
-        progress < BG_TRANSITION_START
-          ? 0
-          : progress > BG_TRANSITION_END
-          ? 1
-          : (progress - BG_TRANSITION_START) / (BG_TRANSITION_END - BG_TRANSITION_START)
-
-      const white = new THREE.Color(0xf4f4f2)
-      const navy = new THREE.Color(0x0e1b3c)
-      targetBgRef.current = white.clone().lerp(navy, bgT)
-
       let active: number | null = null
       PHRASES.forEach((p, i) => {
         if (progress >= p.range[0] && progress <= p.range[1]) active = i
@@ -255,6 +236,20 @@ export default function FrameScroll() {
           style={{
             opacity: totalLoaded ? 1 : 0,
             transition: 'opacity 0.8s ease',
+            imageRendering: 'crisp-edges',
+          }}
+        />
+
+        {/* Gradiente de saída — última parte da sticky vira azul para entregar
+            suavemente à BrandPalette. Só aparece próximo ao fim do scroll. */}
+        <div
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
+          style={{
+            height: '40vh',
+            background:
+              'linear-gradient(180deg, rgba(244,244,242,0) 0%, rgba(244,244,242,0.4) 30%, rgba(228,235,250,0.7) 60%, rgba(140,170,230,0.85) 85%, rgba(31,79,191,0.95) 100%)',
+            opacity: displayFrame / FRAMES_COUNT > 0.78 ? Math.min((displayFrame / FRAMES_COUNT - 0.78) / 0.22, 1) : 0,
+            transition: 'opacity 0.3s ease',
           }}
         />
 

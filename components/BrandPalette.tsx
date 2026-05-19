@@ -28,33 +28,47 @@ export default function BrandPalette() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden py-32 px-8"
+      className="relative overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, #0E1B3C 0%, #0E1B3C 70%, #0A1230 100%)',
+        background:
+          'linear-gradient(180deg, #1F4FBF 0%, #173FA0 20%, #0E1B3C 55%, #050B1F 90%, #000000 100%)',
+        paddingTop: '14rem',
+        paddingBottom: '14rem',
+        paddingLeft: '2rem',
+        paddingRight: '2rem',
       }}
       id="paleta"
     >
+      {/* Transição superior — recebe o branco do FrameScroll e funde no royal */}
+      <div
+        className="absolute top-0 left-0 right-0 h-48 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(244,244,242,0.85) 0%, rgba(140,170,230,0.55) 35%, rgba(31,79,191,0.25) 70%, transparent 100%)',
+        }}
+      />
+
       {/* Glow decorativo */}
       <div
         className="absolute top-1/3 left-1/4 w-96 h-96 rounded-full pointer-events-none"
         style={{
-          background: 'radial-gradient(circle, rgba(31,79,191,0.22) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(31,79,191,0.35) 0%, transparent 70%)',
           filter: 'blur(60px)',
         }}
       />
       <div
         className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full pointer-events-none"
         style={{
-          background: 'radial-gradient(circle, rgba(242,140,40,0.12) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(242,140,40,0.14) 0%, transparent 70%)',
           filter: 'blur(50px)',
         }}
       />
 
-      {/* Transição inferior — fade para preto (próxima seção About) */}
+      {/* Transição inferior — fade para preto puro (próxima seção About) */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none"
+        className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
         style={{
-          background: 'linear-gradient(180deg, transparent 0%, #0A0A0A 100%)',
+          background: 'linear-gradient(180deg, transparent 0%, #000000 100%)',
         }}
       />
 

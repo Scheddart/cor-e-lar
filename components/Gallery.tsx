@@ -4,7 +4,17 @@ import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion, AnimatePresence } from 'framer-motion'
-import PaintBucket from './PaintBucket'
+import dynamic from 'next/dynamic'
+
+// R3F precisa de SSR off
+const BucketScene3D = dynamic(() => import('./Bucket3DScene'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-white/15 border-t-[#F28C28] rounded-full animate-spin" />
+    </div>
+  ),
+})
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
@@ -193,8 +203,8 @@ export default function Gallery() {
               className="absolute inset-0 flex flex-col items-center justify-center"
               style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
             >
-              <div className="w-[260px] sm:w-[300px] md:w-[340px] drop-shadow-[0_30px_40px_rgba(0,0,0,0.5)]">
-                <PaintBucket paintColor={dominantColor} />
+              <div className="w-[320px] sm:w-[400px] md:w-[480px] h-[320px] sm:h-[400px] md:h-[480px]">
+                <BucketScene3D paintColor={dominantColor} className="w-full h-full" />
               </div>
 
               {/* Nome + categoria abaixo do balde */}

@@ -240,15 +240,14 @@ export default function FrameScroll() {
           }}
         />
 
-        {/* Gradiente de saída — última parte da sticky vira azul para entregar
-            suavemente à BrandPalette. Só aparece próximo ao fim do scroll. */}
+        {/* Gradiente de saída — APENAS no rodapé, sem invadir os baldes */}
         <div
           className="absolute inset-x-0 bottom-0 pointer-events-none"
           style={{
-            height: '40vh',
+            height: '18vh',
             background:
-              'linear-gradient(180deg, rgba(244,244,242,0) 0%, rgba(244,244,242,0.4) 30%, rgba(228,235,250,0.7) 60%, rgba(140,170,230,0.85) 85%, rgba(31,79,191,0.95) 100%)',
-            opacity: displayFrame / FRAMES_COUNT > 0.78 ? Math.min((displayFrame / FRAMES_COUNT - 0.78) / 0.22, 1) : 0,
+              'linear-gradient(180deg, rgba(31,79,191,0) 0%, rgba(31,79,191,0.5) 70%, rgba(31,79,191,0.85) 100%)',
+            opacity: displayFrame / FRAMES_COUNT > 0.85 ? Math.min((displayFrame / FRAMES_COUNT - 0.85) / 0.15, 1) : 0,
             transition: 'opacity 0.3s ease',
           }}
         />

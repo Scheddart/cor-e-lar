@@ -39,14 +39,7 @@ export default function BrandPalette() {
       }}
       id="paleta"
     >
-      {/* Transição superior — recebe o branco do FrameScroll e funde no royal */}
-      <div
-        className="absolute top-0 left-0 right-0 h-48 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(244,244,242,0.85) 0%, rgba(140,170,230,0.55) 35%, rgba(31,79,191,0.25) 70%, transparent 100%)',
-        }}
-      />
+      {/* (sem overlay no topo — o gradiente da seção já começa em royal) */}
 
       {/* Glow decorativo */}
       <div

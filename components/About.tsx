@@ -80,10 +80,27 @@ export default function About() {
   }, [])
 
   return (
-    <section id="sobre" ref={sectionRef} className="relative py-32 px-6 bg-night overflow-hidden">
-      {/* Background accent */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-orange-paint opacity-[0.03] blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-navy opacity-[0.4] blur-[100px] pointer-events-none" />
+    <section
+      id="sobre"
+      ref={sectionRef}
+      className="relative py-32 px-6 overflow-hidden"
+      style={{ background: '#000000' }}
+    >
+      {/* Glow sutil em azul-marinho (sem cinza, sem laranja borrado) */}
+      <div
+        className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(14,27,60,0.55) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+        }}
+      />
+      <div
+        className="absolute top-1/2 right-0 w-[400px] h-[400px] rounded-full pointer-events-none -translate-y-1/2"
+        style={{
+          background: 'radial-gradient(circle, rgba(31,79,191,0.18) 0%, transparent 70%)',
+          filter: 'blur(70px)',
+        }}
+      />
 
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-16 xl:gap-24 items-center">

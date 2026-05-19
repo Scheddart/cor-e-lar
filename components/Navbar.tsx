@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Menu, X, Phone } from 'lucide-react'
 import Logo from './Logo'
 
 const navLinks = [
-  { label: 'Início', href: '#hero' },
+  { label: 'Início', href: '#experiencia' },
   { label: 'Sobre', href: '#sobre' },
   { label: 'Produtos', href: '#produtos' },
   { label: 'Serviços', href: '#servicos' },
@@ -16,27 +14,25 @@ const navLinks = [
 ]
 
 export default function Navbar() {
-  const navRef = useRef<HTMLElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    gsap.registerPlugin(ScrollTrigger)
-
-    // Entrance animation
-    gsap.fromTo(
-      navRef.current,
-      { y: -80, opacity: 0 },
-      { y: 0, opacity: 1, duration: 1, ease: 'power3.out', delay: 0.5 }
-    )
-
-    // Scroll-based style change
+    // Navbar aparece APÓS a animação FrameScroll terminar
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50)
+      const frameSection = document.getElementById('experiencia')
+      if (!frameSection) {
+        setVisible(window.scrollY > 50)
+        return
+      }
+      const bottom = frameSection.offsetTop + frameSection.offsetHeight
+      // Mostra quando o usuário passa do final da seção FrameScroll
+      setVisible(window.scrollY >= bottom - window.innerHeight * 0.3)
     }
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -51,25 +47,24 @@ export default function Navbar() {
   return (
     <>
       <nav
-        ref={navRef}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled
-            ? 'bg-night/95 backdrop-blur-xl border-b border-night-border'
-            : 'bg-transparent'
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 bg-[#0E1B3C]/95 backdrop-blur-xl border-b border-white/5 ${
+          visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
         }`}
-        style={{ opacity: 0 }}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo */}
+            {/* Logo + Brand name */}
             <button
-              onClick={() => scrollToSection('#hero')}
-              className="flex items-center group"
+              onClick={() => scrollToSection('#experiencia')}
+              className="flex items-center gap-3 group"
             >
               <Logo
                 variant="compact"
-                className="h-12 w-auto group-hover:scale-105 transition-transform duration-300 drop-shadow-[0_2px_8px_rgba(245,237,224,0.15)]"
+                className="h-10 w-auto group-hover:scale-105 transition-transform duration-300"
               />
+              <span className="hidden md:inline-block font-display text-sm tracking-[0.3em] text-brand-white/80">
+                COR &amp; LAR TINTAS
+              </span>
             </button>
 
             {/* Desktop links */}
@@ -78,7 +73,7 @@ export default function Navbar() {
                 <button
                   key={link.href}
                   onClick={() => scrollToSection(link.href)}
-                  className="paint-underline text-sm text-cream/70 hover:text-cream transition-colors duration-200 font-body font-medium"
+                  className="paint-underline text-sm text-brand-white/70 hover:text-brand-white transition-colors duration-200 font-body font-medium"
                 >
                   {link.label}
                 </button>
@@ -91,7 +86,7 @@ export default function Navbar() {
                 href="https://wa.me/551935732828"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-5 py-2.5 bg-orange-paint hover:bg-orange-light text-white text-sm font-body font-medium rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-orange-paint/30"
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#F28C28] hover:bg-[#FFA855] text-white text-sm font-body font-medium rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-[#F28C28]/30"
               >
                 <Phone size={14} />
                 Fale Conosco
@@ -100,7 +95,7 @@ export default function Navbar() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden text-cream p-2"
+              className="lg:hidden text-brand-white p-2"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Menu"
             >
@@ -112,7 +107,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       <div
-        className={`fixed inset-0 z-40 bg-night/98 backdrop-blur-xl transition-all duration-500 lg:hidden flex flex-col justify-center items-center gap-8 ${
+        className={`fixed inset-0 z-40 bg-[#0E1B3C]/98 backdrop-blur-xl transition-all duration-500 lg:hidden flex flex-col justify-center items-center gap-8 ${
           menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -120,7 +115,7 @@ export default function Navbar() {
           <button
             key={link.href}
             onClick={() => scrollToSection(link.href)}
-            className="font-display text-5xl text-cream hover:text-orange-paint transition-colors duration-200"
+            className="font-display text-5xl text-brand-white hover:text-[#F28C28] transition-colors duration-200"
             style={{ transitionDelay: `${i * 50}ms` }}
           >
             {link.label}
@@ -130,7 +125,7 @@ export default function Navbar() {
           href="https://wa.me/551935732828"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 flex items-center gap-2 px-8 py-3 bg-orange-paint text-white font-body font-medium rounded-full"
+          className="mt-4 flex items-center gap-2 px-8 py-3 bg-[#F28C28] text-white font-body font-medium rounded-full"
           onClick={() => setMenuOpen(false)}
         >
           <Phone size={16} />

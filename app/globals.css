@@ -21,7 +21,7 @@ html {
 
 body {
   background-color: #0A0A0A;
-  color: #F5EDE0;
+  color: #F4F4F2;
   font-family: var(--font-inter);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -36,14 +36,14 @@ body {
   background: #0A0A0A;
 }
 ::-webkit-scrollbar-thumb {
-  background: #FF4D1A;
+  background: #F28C28;
   border-radius: 2px;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(255, 77, 26, 0.3);
-  color: #F5EDE0;
+  background: rgba(242, 140, 40, 0.3);
+  color: #F4F4F2;
 }
 
 /* Paint drip SVG animation */
@@ -69,7 +69,15 @@ body {
 
 /* Gradient text */
 .text-gradient-paint {
-  background: linear-gradient(135deg, #FF4D1A 0%, #C9A04A 50%, #FF7A50 100%);
+  background: linear-gradient(135deg, #D62828 0%, #F28C28 50%, #F28C28 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Brand-blue gradient text */
+.text-gradient-brand-blue {
+  background: linear-gradient(135deg, #1F4FBF 0%, #4F7FE0 50%, #1F4FBF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -84,7 +92,7 @@ body {
 
 /* Orange glow */
 .glow-orange {
-  box-shadow: 0 0 40px rgba(255, 77, 26, 0.2), 0 0 80px rgba(255, 77, 26, 0.1);
+  box-shadow: 0 0 40px rgba(242, 140, 40, 0.22), 0 0 80px rgba(242, 140, 40, 0.1);
 }
 
 /* Noise texture overlay */
@@ -102,7 +110,7 @@ body {
   display: inline-block;
   width: 40px;
   height: 2px;
-  background: #FF4D1A;
+  background: #F28C28;
 }
 
 /* Paint stroke underline */
@@ -116,7 +124,7 @@ body {
   bottom: -4px;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, #FF4D1A, #C9A04A);
+  background: linear-gradient(90deg, #D62828, #F28C28);
   border-radius: 2px;
   transform: scaleX(0);
   transform-origin: left;

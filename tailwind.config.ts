@@ -12,16 +12,27 @@ const config: Config = {
         night: '#0A0A0A',
         'night-soft': '#141414',
         'night-border': '#1E1E1E',
-        orange: {
-          paint: '#FF4D1A',
-          light: '#FF7A50',
-          glow: 'rgba(255,77,26,0.15)',
+        // Nova paleta da marca
+        brand: {
+          navy: '#0E1B3C',      // Azul Marinho Profundo (dominante)
+          'navy-soft': '#152547',
+          'navy-deep': '#08112A',
+          white: '#F4F4F2',     // Branco Gelo
+          red: '#D62828',       // Vermelho Vibrante
+          orange: '#F28C28',    // Laranja Queimado
+          royal: '#1F4FBF',     // Azul Royal (complementar)
         },
-        cream: '#F5EDE0',
-        'cream-soft': '#EEE3D2',
-        navy: '#1C2B4A',
-        gold: '#C9A04A',
-        'gold-light': '#E8C56A',
+        // Aliases legados para compatibilidade com componentes existentes
+        orange: {
+          paint: '#F28C28',
+          light: '#FFA855',
+          glow: 'rgba(242,140,40,0.18)',
+        },
+        cream: '#F4F4F2',
+        'cream-soft': '#E8E6DF',
+        navy: '#0E1B3C',
+        gold: '#F28C28',
+        'gold-light': '#FFA855',
       },
       fontFamily: {
         display: ['var(--font-bebas)', 'sans-serif'],

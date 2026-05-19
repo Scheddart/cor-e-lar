@@ -86,7 +86,7 @@ export default function About() {
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-navy opacity-[0.4] blur-[100px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-20 items-center">
+        <div className="grid lg:grid-cols-2 gap-16 xl:gap-24 items-center">
           {/* Left: Text */}
           <div>
             <div className="overflow-hidden">
@@ -98,10 +98,10 @@ export default function About() {
               </div>
             </div>
 
-            <h2 className="about-text-line font-display text-cream mb-6 leading-[1.05] pb-2 text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem]">
+            <h2 className="about-text-line font-display text-cream mb-6 leading-[1.05] pb-2 text-4xl sm:text-5xl md:text-[3.5rem] lg:text-[4rem] xl:text-[4.5rem]">
               MAIS QUE TINTA,
               <br />
-              <span className="text-gradient-paint inline-block pb-2">TRANSFORMAÇÃO</span>
+              <span className="text-gradient-paint inline-block pb-1">TRANSFORMAÇÃO</span>
             </h2>
 
             <div className="space-y-5">

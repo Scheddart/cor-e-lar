@@ -83,7 +83,7 @@ export default function About() {
     <section
       id="sobre"
       ref={sectionRef}
-      className="relative py-32 px-6 overflow-hidden"
+      className="relative py-20 md:py-28 lg:py-32 px-5 md:px-6 overflow-hidden"
       style={{ background: '#000000' }}
     >
       {/* Glow sutil em azul-marinho (sem cinza, sem laranja borrado) */}

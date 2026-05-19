@@ -75,7 +75,7 @@ export default function Products() {
   }, [])
 
   return (
-    <section id="produtos" ref={sectionRef} className="relative py-32 px-6 bg-night-soft overflow-hidden">
+    <section id="produtos" ref={sectionRef} className="relative py-20 md:py-28 lg:py-32 px-5 md:px-6 bg-night-soft overflow-hidden">
       <div className="absolute inset-0 opacity-[0.015]"
         style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1px, transparent 0)',

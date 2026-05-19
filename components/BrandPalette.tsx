@@ -28,14 +28,10 @@ export default function BrandPalette() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden"
+      className="relative overflow-hidden py-24 md:py-32 lg:py-56 px-4 md:px-8"
       style={{
         background:
           'linear-gradient(180deg, #1F4FBF 0%, #173FA0 20%, #0E1B3C 55%, #050B1F 90%, #000000 100%)',
-        paddingTop: '14rem',
-        paddingBottom: '14rem',
-        paddingLeft: '2rem',
-        paddingRight: '2rem',
       }}
       id="paleta"
     >

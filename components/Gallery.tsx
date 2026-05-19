@@ -90,7 +90,7 @@ export default function Gallery() {
   const featured = colorPalettes[current]
 
   return (
-    <section id="galeria" ref={sectionRef} className="relative py-32 px-6 bg-night-soft overflow-hidden">
+    <section id="galeria" ref={sectionRef} className="relative py-20 md:py-28 lg:py-32 px-5 md:px-6 bg-night-soft overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-orange-paint/20 to-transparent" />
 
       <div className="max-w-7xl mx-auto">

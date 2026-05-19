@@ -70,7 +70,7 @@ export default function Contact() {
   }, [])
 
   return (
-    <section id="contato" ref={sectionRef} className="relative py-32 px-6 bg-night overflow-hidden">
+    <section id="contato" ref={sectionRef} className="relative py-20 md:py-28 lg:py-32 px-5 md:px-6 bg-night overflow-hidden">
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-orange-paint opacity-[0.03] blur-[120px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto">

@@ -74,7 +74,7 @@ export default function Services() {
   }, [])
 
   return (
-    <section id="servicos" ref={sectionRef} className="relative py-32 px-6 bg-night overflow-hidden">
+    <section id="servicos" ref={sectionRef} className="relative py-20 md:py-28 lg:py-32 px-5 md:px-6 bg-night overflow-hidden">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-orange-paint opacity-[0.04] blur-[150px] pointer-events-none rounded-full" />
 

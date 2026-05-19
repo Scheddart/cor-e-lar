@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 const FRAMES_COUNT = 102
-const SECTION_HEIGHT = '500vh' // scroll mais rápido que antes
+const SECTION_HEIGHT_DESKTOP = '500vh'
+const SECTION_HEIGHT_MOBILE = '350vh' // mais curto pra não cansar o swipe no celular
 
 // Frases alternando lado conforme o scroll
 const PHRASES = [
@@ -57,6 +58,7 @@ const fragmentShader = `
   uniform sampler2D tFrame;
   uniform float uAspect;
   uniform float uImageAspect;
+  uniform vec2 uTexelSize;
   varying vec2 vUv;
 
   void main() {
@@ -69,7 +71,19 @@ const fragmentShader = `
       uv.x = (uv.x - 0.5) * ratio + 0.5;
     }
 
-    gl_FragColor = texture2D(tFrame, uv);
+    // Amostra central + 4 vizinhos para unsharp mask
+    vec4 center = texture2D(tFrame, uv);
+    vec4 n = texture2D(tFrame, uv + vec2(0.0, uTexelSize.y));
+    vec4 s = texture2D(tFrame, uv - vec2(0.0, uTexelSize.y));
+    vec4 e = texture2D(tFrame, uv + vec2(uTexelSize.x, 0.0));
+    vec4 w = texture2D(tFrame, uv - vec2(uTexelSize.x, 0.0));
+
+    vec4 avg = (n + s + e + w) * 0.25;
+    // intensidade do realce — sutil para não criar artefatos
+    float amount = 0.35;
+    vec4 sharp = center + (center - avg) * amount;
+
+    gl_FragColor = vec4(clamp(sharp.rgb, 0.0, 1.0), 1.0);
   }
 `
 
@@ -85,6 +99,17 @@ export default function FrameScroll() {
   const [loadedCount, setLoadedCount] = useState(0)
   const [activePhrase, setActivePhrase] = useState<number | null>(null)
   const [displayFrame, setDisplayFrame] = useState(1)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detecta mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 767px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   const totalLoaded = loadedCount === FRAMES_COUNT
 
@@ -99,7 +124,13 @@ export default function FrameScroll() {
       alpha: false,
       powerPreference: 'high-performance',
     })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5))
+
+    // DPR adaptativo: limita ao que faz sentido para frames 1920x1080
+    // Se o viewport é 1440 e o frame é 1920, DPR 1 = downscale leve (ótimo)
+    // Se o viewport é 1920+, DPR 1 = 1:1 (perfeito)
+    // Evita upscale pesado que borra
+    const optimalDPR = Math.min(window.devicePixelRatio, 1920 / Math.max(window.innerWidth, 1))
+    renderer.setPixelRatio(Math.max(1, optimalDPR))
     renderer.setSize(window.innerWidth, window.innerHeight)
     rendererRef.current = renderer
 
@@ -114,6 +145,7 @@ export default function FrameScroll() {
         tFrame: { value: null },
         uAspect: { value: window.innerWidth / window.innerHeight },
         uImageAspect: { value: 16 / 9 },
+        uTexelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
       },
     })
     materialRef.current = material
@@ -165,8 +197,9 @@ export default function FrameScroll() {
     for (let i = 0; i < FRAMES_COUNT; i++) {
       const num = String(i + 1).padStart(3, '0')
       loader.load(`/frames/ezgif-frame-${num}.png`, (texture) => {
-        texture.generateMipmaps = true
-        texture.minFilter = THREE.LinearMipmapLinearFilter
+        // Sem mipmaps — preserva nitidez. LinearFilter para magnification suave
+        texture.generateMipmaps = false
+        texture.minFilter = THREE.LinearFilter
         texture.magFilter = THREE.LinearFilter
         texture.anisotropy = maxAniso
         if ('colorSpace' in texture) {
@@ -181,6 +214,11 @@ export default function FrameScroll() {
           materialRef.current.uniforms.tFrame.value = texture
           materialRef.current.uniforms.uImageAspect.value =
             texture.image.width / texture.image.height
+          // Atualiza texel size com dimensões reais do frame
+          materialRef.current.uniforms.uTexelSize.value.set(
+            1 / texture.image.width,
+            1 / texture.image.height
+          )
         }
       })
     }
@@ -225,7 +263,7 @@ export default function FrameScroll() {
     <section
       ref={sectionRef}
       className="relative"
-      style={{ height: SECTION_HEIGHT }}
+      style={{ height: isMobile ? SECTION_HEIGHT_MOBILE : SECTION_HEIGHT_DESKTOP }}
       id="experiencia"
     >
       <div className="sticky top-0 h-screen overflow-hidden bg-[#F4F4F2]">
@@ -240,37 +278,30 @@ export default function FrameScroll() {
           }}
         />
 
-        {/* Gradiente de saída — APENAS no rodapé, sem invadir os baldes */}
-        <div
-          className="absolute inset-x-0 bottom-0 pointer-events-none"
-          style={{
-            height: '18vh',
-            background:
-              'linear-gradient(180deg, rgba(31,79,191,0) 0%, rgba(31,79,191,0.5) 70%, rgba(31,79,191,0.85) 100%)',
-            opacity: displayFrame / FRAMES_COUNT > 0.85 ? Math.min((displayFrame / FRAMES_COUNT - 0.85) / 0.15, 1) : 0,
-            transition: 'opacity 0.3s ease',
-          }}
-        />
+        {/* (sem fade — corte direto para a próxima seção) */}
 
-        {/* Frases — alternam lado conforme o scroll */}
+        {/* Frases — alternam lado no desktop, centralizadas embaixo no mobile */}
         {PHRASES.map((p, i) => {
           const isActive = activePhrase === i
-          const sideClass = p.side === 'left' ? 'left-12 xl:left-20 text-left' : 'right-12 xl:right-20 text-right'
+          const desktopSide = p.side === 'left' ? 'md:left-12 xl:left-20 md:text-left' : 'md:right-12 xl:right-20 md:text-right'
+          const baseY = isMobile ? 0 : -50 // % para vertical center no desktop
+          const offsetY = isActive ? 0 : 24
           return (
             <div
               key={i}
-              className={`absolute ${sideClass} z-10 max-w-md pointer-events-none select-none`}
+              className={`absolute z-10 pointer-events-none select-none px-4 text-center left-4 right-4 max-w-md mx-auto bottom-[12%] md:bottom-auto md:top-1/2 md:left-auto md:right-auto md:mx-0 md:max-w-md ${desktopSide}`}
               style={{
-                top: '50%',
                 opacity: isActive ? 1 : 0,
-                transform: `translateY(calc(-50% + ${isActive ? 0 : 24}px))`,
+                transform: isMobile
+                  ? `translateY(${offsetY}px)`
+                  : `translateY(calc(${baseY}% + ${offsetY}px))`,
                 transition: 'opacity 0.6s ease, transform 0.6s ease',
               }}
             >
               <p
                 className="font-display leading-[1.05]"
                 style={{
-                  fontSize: 'clamp(1.6rem, 2.6vw, 2.8rem)',
+                  fontSize: 'clamp(1.4rem, 3.4vw, 2.8rem)',
                   color: '#0E1B3C',
                   textShadow: '0 2px 12px rgba(244,244,242,0.6)',
                 }}
@@ -290,7 +321,7 @@ export default function FrameScroll() {
               </p>
               {p.sub && (
                 <p
-                  className="text-xs tracking-[0.3em] uppercase mt-3"
+                  className="text-[10px] md:text-xs tracking-[0.25em] md:tracking-[0.3em] uppercase mt-2 md:mt-3"
                   style={{ color: 'rgba(14,27,60,0.55)' }}
                 >
                   {p.sub}

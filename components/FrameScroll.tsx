@@ -112,6 +112,7 @@ export default function FrameScroll() {
   }, [])
 
   const totalLoaded = loadedCount === FRAMES_COUNT
+  const canShow = loadedCount >= 1 // libera a tela assim que o primeiro frame chega
 
   // Init Three.js
   useEffect(() => {
@@ -272,8 +273,8 @@ export default function FrameScroll() {
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
           style={{
-            opacity: totalLoaded ? 1 : 0,
-            transition: 'opacity 0.8s ease',
+            opacity: canShow ? 1 : 0,
+            transition: 'opacity 0.4s ease',
             imageRendering: 'crisp-edges',
           }}
         />
@@ -339,25 +340,20 @@ export default function FrameScroll() {
           {String(displayFrame).padStart(3, '0')} / {String(FRAMES_COUNT).padStart(3, '0')}
         </div>
 
-        {/* Loading */}
-        {!totalLoaded && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-[#F4F4F2]">
-            <div className="mb-6">
-              <svg viewBox="0 0 200 60" className="h-10 w-auto" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="100" cy="30" rx="96" ry="26" fill="#F4F4F2" stroke="#0E1B3C" strokeWidth="1.5" />
-                <path d="M 15 22 Q 55 18, 100 22 T 185 22" stroke="#D62828" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                <text x="100" y="35" textAnchor="middle" fontFamily="'Bebas Neue', sans-serif" fontSize="20" fontWeight="700" fill="#0E1B3C" letterSpacing="1.5">COR &amp; LAR</text>
-                <path d="M 15 40 Q 55 44, 100 40 T 185 40" stroke="#1F4FBF" strokeWidth="2" strokeLinecap="round" fill="none" />
-                <text x="100" y="52" textAnchor="middle" fontFamily="'Bebas Neue', sans-serif" fontSize="8" fill="#0E1B3C" letterSpacing="4">TINTAS</text>
-              </svg>
-            </div>
-            <div className="w-48 h-0.5 bg-[#0E1B3C]/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#F28C28] rounded-full transition-all duration-300"
-                style={{ width: `${loadPct}%` }}
-              />
-            </div>
-            <p className="text-[#0E1B3C]/40 text-xs mt-3 tracking-widest">{loadPct}%</p>
+        {/* Splash inicial — só até o primeiro frame */}
+        {!canShow && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 bg-[#F4F4F2]">
+            <div className="w-8 h-8 border-2 border-[#0E1B3C]/15 border-t-[#F28C28] rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Indicador discreto enquanto carrega o resto em background */}
+        {canShow && !totalLoaded && (
+          <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2 pointer-events-none select-none">
+            <div className="w-3 h-3 border border-[#0E1B3C]/20 border-t-[#F28C28] rounded-full animate-spin" />
+            <span className="text-[10px] font-mono tracking-widest" style={{ color: 'rgba(14,27,60,0.4)' }}>
+              {loadPct}%
+            </span>
           </div>
         )}
       </div>

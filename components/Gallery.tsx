@@ -57,12 +57,12 @@ function darken(hex: string, amount = 0.7) {
   return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
 }
 
-// Variantes da animação 3D do balde
+// Variantes da animação 3D do balde — rápido e cinematográfico
 const bucketVariants = {
   enter: (direction: number) => ({
-    x: direction > 0 ? '110%' : '-110%',
-    rotateY: direction > 0 ? 35 : -35,
-    scale: 0.85,
+    x: direction > 0 ? '100%' : '-100%',
+    rotateY: direction > 0 ? 40 : -40,
+    scale: 0.78,
     opacity: 0,
   }),
   center: {
@@ -72,9 +72,9 @@ const bucketVariants = {
     opacity: 1,
   },
   exit: (direction: number) => ({
-    x: direction > 0 ? '-110%' : '110%',
-    rotateY: direction > 0 ? -35 : 35,
-    scale: 0.85,
+    x: direction > 0 ? '-100%' : '100%',
+    rotateY: direction > 0 ? -40 : 40,
+    scale: 0.78,
     opacity: 0,
   }),
 }
@@ -137,7 +137,7 @@ export default function Gallery() {
         animate={{
           background: `radial-gradient(circle at 50% 45%, ${darken(dominantColor, 0.55)} 0%, ${darken(dominantColor, 0.78)} 35%, #000000 75%)`,
         }}
-        transition={{ duration: 1.0, ease: [0.32, 0.72, 0, 1] }}
+        transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
       />
 
       {/* Top divisor sutil */}
@@ -183,8 +183,12 @@ export default function Gallery() {
               animate="center"
               exit="exit"
               transition={{
-                duration: 0.85,
-                ease: [0.32, 0.72, 0, 1],
+                // Spring de mola: entrada rápida e energética
+                type: 'spring',
+                stiffness: 240,
+                damping: 24,
+                mass: 0.7,
+                opacity: { duration: 0.25, ease: 'easeOut' },
               }}
               className="absolute inset-0 flex flex-col items-center justify-center"
               style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
@@ -219,7 +223,7 @@ export default function Gallery() {
                 style={{ backgroundColor: color }}
                 initial={{ scaleY: 0 }}
                 animate={{ scaleY: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 + i * 0.06, ease: 'easeOut' }}
+                transition={{ duration: 0.28, delay: 0.1 + i * 0.04, ease: 'easeOut' }}
               />
             ))}
           </div>

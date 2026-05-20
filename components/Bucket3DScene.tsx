@@ -151,12 +151,12 @@ function Bucket({ paintColor }: { paintColor: string }) {
   const groupRef = useRef<THREE.Group>(null)
   const labelTexture = useBrandLabelTexture()
 
-  // Rotação idle bem sutil pra "respirar"
+  // Rotação idle bem sutil pra "respirar" — base π/2 rotaciona o logo p/ frente da câmera
   useFrame((state) => {
     if (!groupRef.current) return
     const t = state.clock.elapsedTime
-    groupRef.current.rotation.y = Math.sin(t * 0.4) * 0.08
-    groupRef.current.position.y = Math.sin(t * 0.6) * 0.02 - 0.1
+    groupRef.current.rotation.y = Math.PI / 2 + Math.sin(t * 0.4) * 0.06
+    groupRef.current.position.y = Math.sin(t * 0.6) * 0.02
   })
 
   return (
@@ -252,7 +252,7 @@ export default function BucketScene3D({ paintColor, className = '' }: BucketScen
         style={{ width: '100%', height: '100%', display: 'block' }}
       >
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[1.5, 0.2, 3.2]} fov={58} />
+          <PerspectiveCamera makeDefault position={[0.8, 2.2, 2.8]} fov={48} />
 
           {/* Iluminação cinematográfica */}
           <ambientLight intensity={0.42} />

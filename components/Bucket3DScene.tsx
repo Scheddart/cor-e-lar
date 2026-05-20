@@ -162,31 +162,27 @@ function Bucket({ paintColor }: { paintColor: string }) {
 
   return (
     <group ref={groupRef} scale={0.78}>
-      {/* CORPO — cilindro levemente cônico (raio menor embaixo) */}
+      {/* CORPO — cilindro OPEN-ENDED (sem tampas; evita o bug do mapeamento radial no topo) */}
       <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[1.05, 0.97, 2.4, 96, 1, false]} />
+        <cylinderGeometry args={[1.05, 0.97, 2.4, 96, 1, true]} />
         <meshStandardMaterial
           map={labelTexture ?? undefined}
           color="#FFFFFF"
           metalness={0.0}
           roughness={0.45}
+          side={THREE.FrontSide}
         />
       </mesh>
 
-      {/* BORDA SUPERIOR — anel claro do topo do balde (sem tampa, mostrando interior) */}
-      <mesh position={[0, 1.21, 0]}>
-        <ringGeometry args={[0.95, 1.08, 96]} />
-        <meshStandardMaterial
-          color="#E8E8E5"
-          metalness={0.1}
-          roughness={0.4}
-          side={THREE.DoubleSide}
-        />
+      {/* FUNDO — disco fechando o balde por baixo */}
+      <mesh position={[0, -1.19, 0]}>
+        <cylinderGeometry args={[0.97, 0.97, 0.02, 64]} />
+        <meshStandardMaterial color="#E8E8E5" roughness={0.5} />
       </mesh>
 
-      {/* PAREDE INTERNA (escurecida) — dá profundidade ao interior */}
-      <mesh position={[0, 0.9, 0]}>
-        <cylinderGeometry args={[0.95, 0.93, 0.6, 64, 1, true]} />
+      {/* PAREDE INTERNA escurecida — dá profundidade ao olhar para dentro */}
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.95, 0.93, 1.2, 64, 1, true]} />
         <meshStandardMaterial
           color="#2A2A28"
           roughness={0.85}
@@ -195,13 +191,24 @@ function Bucket({ paintColor }: { paintColor: string }) {
         />
       </mesh>
 
-      {/* TINTA — superfície líquida com a cor da paleta (visível por cima) */}
-      <mesh position={[0, 1.18, 0]}>
-        <cylinderGeometry args={[0.94, 0.94, 0.04, 64]} />
+      {/* TINTA — disco sólido da cor da paleta, ligeiramente abaixo da borda */}
+      <mesh position={[0, 1.14, 0]}>
+        <cylinderGeometry args={[0.93, 0.93, 0.04, 64]} />
         <meshStandardMaterial
           color={paintColor}
           metalness={0.05}
           roughness={0.22}
+        />
+      </mesh>
+
+      {/* BORDA SUPERIOR — anel claro na altura do topo do balde */}
+      <mesh position={[0, 1.21, 0]}>
+        <ringGeometry args={[0.93, 1.08, 96]} />
+        <meshStandardMaterial
+          color="#E8E8E5"
+          metalness={0.1}
+          roughness={0.4}
+          side={THREE.DoubleSide}
         />
       </mesh>
     </group>

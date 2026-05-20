@@ -59,36 +59,31 @@ const fragmentShader = `
   uniform float uAspect;
   uniform float uImageAspect;
   uniform vec2 uTexelSize;
-  uniform float uContainMode;  // 1.0 = contain (mobile), 0.0 = cover (desktop)
-  uniform float uScale;        // < 1.0 = imagem menor com mais branco ao redor
+  uniform float uFitFactor;    // 0 = cover (preenche), 1 = contain (cabe inteiro)
+  uniform float uScale;        // < 1.0 deixa margem extra de branco
   varying vec2 vUv;
 
   void main() {
     vec2 uv = vUv;
     float ratio = uAspect / uImageAspect;
-    bool inBounds = true;
 
-    if (uContainMode > 0.5) {
-      // CONTAIN: imagem inteira visível, fundo branco em volta
-      if (ratio > 1.0) {
-        uv.x = (uv.x - 0.5) * ratio + 0.5;
-      } else {
-        uv.y = (uv.y - 0.5) / ratio + 0.5;
-      }
-      // Aplica escala extra (menor = mais branco em volta)
-      uv = (uv - 0.5) / uScale + 0.5;
-      inBounds = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
+    // Interpola continuamente entre COVER (uFitFactor=0) e CONTAIN (uFitFactor=1)
+    float xMult, yMult;
+    if (ratio > 1.0) {
+      xMult = mix(1.0, ratio, uFitFactor);
+      yMult = mix(1.0 / ratio, 1.0, uFitFactor);
     } else {
-      // COVER: preenche o canvas inteiro (pode cortar o frame)
-      if (ratio > 1.0) {
-        uv.y = (uv.y - 0.5) / ratio + 0.5;
-      } else {
-        uv.x = (uv.x - 0.5) * ratio + 0.5;
-      }
+      xMult = mix(ratio, 1.0, uFitFactor);
+      yMult = mix(1.0, 1.0 / ratio, uFitFactor);
     }
+    uv.x = (vUv.x - 0.5) * xMult + 0.5;
+    uv.y = (vUv.y - 0.5) * yMult + 0.5;
 
-    if (!inBounds) {
-      // Branco do design (#F4F4F2)
+    // Escala adicional (menor = mais branco em volta)
+    uv = (uv - 0.5) / uScale + 0.5;
+
+    // Fora dos limites = fundo branco do design
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
       gl_FragColor = vec4(0.957, 0.957, 0.949, 1.0);
       return;
     }
@@ -122,18 +117,11 @@ export default function FrameScroll() {
   const [displayFrame, setDisplayFrame] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Detecta mobile e sincroniza shader uniforms
+  // Detecta mobile (uniforms são atualizados no scroll handler)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(max-width: 767px)')
-    const update = () => {
-      const mobile = mq.matches
-      setIsMobile(mobile)
-      if (materialRef.current) {
-        materialRef.current.uniforms.uContainMode.value = mobile ? 1.0 : 0.0
-        materialRef.current.uniforms.uScale.value = mobile ? 0.85 : 1.0
-      }
-    }
+    const update = () => setIsMobile(mq.matches)
     update()
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
@@ -176,7 +164,8 @@ export default function FrameScroll() {
         uAspect: { value: window.innerWidth / window.innerHeight },
         uImageAspect: { value: 16 / 9 },
         uTexelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
-        uContainMode: { value: isMobileNow ? 1.0 : 0.0 },
+        // No mobile começa contained (frame 1); no desktop sempre cover
+        uFitFactor: { value: isMobileNow ? 1.0 : 0.0 },
         uScale: { value: isMobileNow ? 0.85 : 1.0 },
       },
     })
@@ -276,6 +265,34 @@ export default function FrameScroll() {
       const newTarget = Math.round(progress * (FRAMES_COUNT - 1))
       targetFrameRef.current = newTarget
       setDisplayFrame(newTarget + 1)
+
+      // Mobile: interpola entre CONTAIN (começo/fim, com margem branca) e COVER (meio, preenche a tela)
+      const mat = materialRef.current
+      if (mat) {
+        const isMobileNow = window.matchMedia('(max-width: 767px)').matches
+        if (isMobileNow) {
+          // Curvas suaves de transição
+          // 0 → 0.08: contained max     (uFit=1, uScale=0.85)
+          // 0.08 → 0.20: contain → cover
+          // 0.20 → 0.80: cover puro     (uFit=0, uScale=1)
+          // 0.80 → 0.92: cover → contain
+          // 0.92 → 1: contained max
+          const smoothstep = (a: number, b: number, x: number) => {
+            const t = Math.min(Math.max((x - a) / (b - a), 0), 1)
+            return t * t * (3 - 2 * t)
+          }
+          // contained = 1 nos extremos, 0 no meio
+          const containedAmount =
+            (1 - smoothstep(0.08, 0.20, progress)) + smoothstep(0.80, 0.92, progress)
+          const clamped = Math.min(Math.max(containedAmount, 0), 1)
+          mat.uniforms.uFitFactor.value = clamped
+          mat.uniforms.uScale.value = 1.0 - clamped * 0.15 // 1.0 no meio, 0.85 nos extremos
+        } else {
+          // Desktop: sempre cover, escala 1.0
+          mat.uniforms.uFitFactor.value = 0
+          mat.uniforms.uScale.value = 1.0
+        }
+      }
 
       let active: number | null = null
       PHRASES.forEach((p, i) => {

@@ -1,7 +1,6 @@
 'use client'
 
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Environment, ContactShadows } from '@react-three/drei'
 import { useRef, useMemo, Suspense } from 'react'
 import * as THREE from 'three'
 
@@ -151,87 +150,59 @@ function Bucket({ paintColor }: { paintColor: string }) {
   const groupRef = useRef<THREE.Group>(null)
   const labelTexture = useBrandLabelTexture()
 
-  // Rotação idle bem sutil pra "respirar" — base π/2 rotaciona o logo p/ frente da câmera
+  // Idle animation — mais fluida e cinematográfica
   useFrame((state) => {
     if (!groupRef.current) return
     const t = state.clock.elapsedTime
-    groupRef.current.rotation.y = Math.PI / 2 + Math.sin(t * 0.4) * 0.06
-    groupRef.current.position.y = Math.sin(t * 0.6) * 0.02
+    // Rotação base π/2 (logo p/ frente) + oscilação suave e ampla
+    groupRef.current.rotation.y = Math.PI / 2 + Math.sin(t * 0.28) * 0.18
+    // Float vertical suave
+    groupRef.current.position.y = Math.sin(t * 0.45) * 0.035
   })
 
   return (
-    <group ref={groupRef} scale={0.7}>
+    <group ref={groupRef} scale={0.78}>
       {/* CORPO — cilindro levemente cônico (raio menor embaixo) */}
-      <mesh castShadow receiveShadow position={[0, 0, 0]}>
+      <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[1.05, 0.97, 2.4, 96, 1, false]} />
-        <meshPhysicalMaterial
+        <meshStandardMaterial
           map={labelTexture ?? undefined}
           color="#FFFFFF"
-          metalness={0.02}
-          roughness={0.42}
-          clearcoat={0.55}
-          clearcoatRoughness={0.35}
-          reflectivity={0.4}
+          metalness={0.0}
+          roughness={0.45}
         />
       </mesh>
 
-      {/* TAMPA — disco branco plástico no topo */}
-      <mesh castShadow position={[0, 1.25, 0]}>
-        <cylinderGeometry args={[1.12, 1.08, 0.18, 96]} />
-        <meshPhysicalMaterial
-          color="#F4F4F2"
-          metalness={0.05}
-          roughness={0.25}
-          clearcoat={0.85}
-          clearcoatRoughness={0.15}
-        />
-      </mesh>
-
-      {/* BORDA DA TAMPA — anel metalizado */}
-      <mesh position={[0, 1.34, 0]}>
-        <ringGeometry args={[0.9, 1.08, 96]} />
+      {/* BORDA SUPERIOR — anel claro do topo do balde (sem tampa, mostrando interior) */}
+      <mesh position={[0, 1.21, 0]}>
+        <ringGeometry args={[0.95, 1.08, 96]} />
         <meshStandardMaterial
-          color="#B8B8B5"
-          metalness={0.6}
-          roughness={0.3}
+          color="#E8E8E5"
+          metalness={0.1}
+          roughness={0.4}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* TINTA NO TOPO — superfície que muda de cor */}
-      <mesh position={[0, 1.345, 0]}>
-        <cylinderGeometry args={[0.9, 0.9, 0.02, 64]} />
-        <meshPhysicalMaterial
-          color={paintColor}
-          metalness={0.0}
-          roughness={0.18}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-          reflectivity={0.55}
+      {/* PAREDE INTERNA (escurecida) — dá profundidade ao interior */}
+      <mesh position={[0, 0.9, 0]}>
+        <cylinderGeometry args={[0.95, 0.93, 0.6, 64, 1, true]} />
+        <meshStandardMaterial
+          color="#2A2A28"
+          roughness={0.85}
+          metalness={0}
+          side={THREE.BackSide}
         />
       </mesh>
 
-      {/* ALÇA — torus aberto (semi-círculo) */}
-      <group position={[0, 1.4, 0]}>
-        <mesh castShadow rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[1.18, 0.038, 16, 80, Math.PI]} />
-          <meshStandardMaterial color="#0A0A0A" metalness={0.85} roughness={0.25} />
-        </mesh>
-        {/* Conectores da alça */}
-        <mesh position={[-1.18, 0, 0]}>
-          <sphereGeometry args={[0.06, 16, 16]} />
-          <meshStandardMaterial color="#1A1A1A" metalness={0.7} roughness={0.4} />
-        </mesh>
-        <mesh position={[1.18, 0, 0]}>
-          <sphereGeometry args={[0.06, 16, 16]} />
-          <meshStandardMaterial color="#1A1A1A" metalness={0.7} roughness={0.4} />
-        </mesh>
-      </group>
-
-      {/* Botão de pressão lateral da tampa */}
-      <mesh position={[1.04, 1.25, 0]}>
-        <boxGeometry args={[0.1, 0.06, 0.12]} />
-        <meshStandardMaterial color="#D0D0CD" metalness={0.2} roughness={0.4} />
+      {/* TINTA — superfície líquida com a cor da paleta (visível por cima) */}
+      <mesh position={[0, 1.18, 0]}>
+        <cylinderGeometry args={[0.94, 0.94, 0.04, 64]} />
+        <meshStandardMaterial
+          color={paintColor}
+          metalness={0.05}
+          roughness={0.22}
+        />
       </mesh>
     </group>
   )
@@ -246,51 +217,23 @@ export default function BucketScene3D({ paintColor, className = '' }: BucketScen
   return (
     <div className={className} style={{ display: 'block', position: 'relative' }}>
       <Canvas
-        shadows
         gl={{ antialias: true, preserveDrawingBuffer: false }}
         dpr={[1, 1.5]}
         style={{ width: '100%', height: '100%', display: 'block' }}
-        camera={{ position: [1.4, 1.6, 3.4], fov: 42 }}
+        camera={{ position: [1.3, 1.5, 3.6], fov: 40 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0.1, 0)
           camera.updateProjectionMatrix()
         }}
       >
         <Suspense fallback={null}>
-
-          {/* Iluminação cinematográfica */}
-          <ambientLight intensity={0.42} />
-          <directionalLight
-            position={[5, 8, 4]}
-            intensity={2.2}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-            shadow-camera-far={20}
-            shadow-camera-left={-5}
-            shadow-camera-right={5}
-            shadow-camera-top={5}
-            shadow-camera-bottom={-5}
-          />
-          {/* Fill light fria à esquerda */}
-          <directionalLight position={[-4, 3, 2]} intensity={0.6} color="#A8C8FF" />
-          {/* Rim light de trás */}
-          <directionalLight position={[0, 2, -5]} intensity={0.8} color="#FFCCAA" />
+          {/* Iluminação simples e leve — sem HDR, sem shadow maps */}
+          <ambientLight intensity={0.85} />
+          <directionalLight position={[4, 6, 4]} intensity={1.1} />
+          <directionalLight position={[-3, 2, 2]} intensity={0.4} color="#C8DCFF" />
+          <directionalLight position={[0, 3, -4]} intensity={0.45} color="#FFD8B5" />
 
           <Bucket paintColor={paintColor} />
-
-          {/* Sombra de contato — fotorrealista */}
-          <ContactShadows
-            opacity={0.55}
-            scale={6}
-            blur={2.6}
-            far={3.5}
-            position={[0, -1.22, 0]}
-            resolution={1024}
-          />
-
-          {/* HDR studio environment — reflexos realistas */}
-          <Environment preset="studio" />
         </Suspense>
       </Canvas>
     </div>

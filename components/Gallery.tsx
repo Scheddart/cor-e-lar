@@ -191,10 +191,10 @@ export default function Gallery() {
               exit="exit"
               transition={{
                 type: 'spring',
-                stiffness: 240,
-                damping: 24,
-                mass: 0.7,
-                opacity: { duration: 0.25, ease: 'easeOut' },
+                stiffness: 130,
+                damping: 22,
+                mass: 0.9,
+                opacity: { duration: 0.4, ease: [0.32, 0.72, 0, 1] },
               }}
               className="absolute inset-0 flex flex-col items-center justify-center"
             >

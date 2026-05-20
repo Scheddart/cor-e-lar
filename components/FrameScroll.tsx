@@ -59,19 +59,41 @@ const fragmentShader = `
   uniform float uAspect;
   uniform float uImageAspect;
   uniform vec2 uTexelSize;
+  uniform float uContainMode;  // 1.0 = contain (mobile), 0.0 = cover (desktop)
+  uniform float uScale;        // < 1.0 = imagem menor com mais branco ao redor
   varying vec2 vUv;
 
   void main() {
     vec2 uv = vUv;
     float ratio = uAspect / uImageAspect;
+    bool inBounds = true;
 
-    if (ratio > 1.0) {
-      uv.y = (uv.y - 0.5) / ratio + 0.5;
+    if (uContainMode > 0.5) {
+      // CONTAIN: imagem inteira visível, fundo branco em volta
+      if (ratio > 1.0) {
+        uv.x = (uv.x - 0.5) * ratio + 0.5;
+      } else {
+        uv.y = (uv.y - 0.5) / ratio + 0.5;
+      }
+      // Aplica escala extra (menor = mais branco em volta)
+      uv = (uv - 0.5) / uScale + 0.5;
+      inBounds = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
     } else {
-      uv.x = (uv.x - 0.5) * ratio + 0.5;
+      // COVER: preenche o canvas inteiro (pode cortar o frame)
+      if (ratio > 1.0) {
+        uv.y = (uv.y - 0.5) / ratio + 0.5;
+      } else {
+        uv.x = (uv.x - 0.5) * ratio + 0.5;
+      }
     }
 
-    // Amostra central + 4 vizinhos para unsharp mask
+    if (!inBounds) {
+      // Branco do design (#F4F4F2)
+      gl_FragColor = vec4(0.957, 0.957, 0.949, 1.0);
+      return;
+    }
+
+    // Unsharp mask 5-tap p/ nitidez
     vec4 center = texture2D(tFrame, uv);
     vec4 n = texture2D(tFrame, uv + vec2(0.0, uTexelSize.y));
     vec4 s = texture2D(tFrame, uv - vec2(0.0, uTexelSize.y));
@@ -79,7 +101,6 @@ const fragmentShader = `
     vec4 w = texture2D(tFrame, uv - vec2(uTexelSize.x, 0.0));
 
     vec4 avg = (n + s + e + w) * 0.25;
-    // intensidade do realce — sutil para não criar artefatos
     float amount = 0.35;
     vec4 sharp = center + (center - avg) * amount;
 
@@ -101,11 +122,18 @@ export default function FrameScroll() {
   const [displayFrame, setDisplayFrame] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Detecta mobile
+  // Detecta mobile e sincroniza shader uniforms
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(max-width: 767px)')
-    const update = () => setIsMobile(mq.matches)
+    const update = () => {
+      const mobile = mq.matches
+      setIsMobile(mobile)
+      if (materialRef.current) {
+        materialRef.current.uniforms.uContainMode.value = mobile ? 1.0 : 0.0
+        materialRef.current.uniforms.uScale.value = mobile ? 0.85 : 1.0
+      }
+    }
     update()
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
@@ -139,6 +167,7 @@ export default function FrameScroll() {
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
 
     const geometry = new THREE.PlaneGeometry(2, 2)
+    const isMobileNow = window.matchMedia('(max-width: 767px)').matches
     const material = new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,
@@ -147,6 +176,8 @@ export default function FrameScroll() {
         uAspect: { value: window.innerWidth / window.innerHeight },
         uImageAspect: { value: 16 / 9 },
         uTexelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
+        uContainMode: { value: isMobileNow ? 1.0 : 0.0 },
+        uScale: { value: isMobileNow ? 0.85 : 1.0 },
       },
     })
     materialRef.current = material

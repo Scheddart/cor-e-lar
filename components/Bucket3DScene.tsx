@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Environment, ContactShadows, PerspectiveCamera } from '@react-three/drei'
+import { Environment, ContactShadows } from '@react-three/drei'
 import { useRef, useMemo, Suspense } from 'react'
 import * as THREE from 'three'
 
@@ -160,7 +160,7 @@ function Bucket({ paintColor }: { paintColor: string }) {
   })
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} scale={0.7}>
       {/* CORPO — cilindro levemente cônico (raio menor embaixo) */}
       <mesh castShadow receiveShadow position={[0, 0, 0]}>
         <cylinderGeometry args={[1.05, 0.97, 2.4, 96, 1, false]} />
@@ -250,9 +250,13 @@ export default function BucketScene3D({ paintColor, className = '' }: BucketScen
         gl={{ antialias: true, preserveDrawingBuffer: false }}
         dpr={[1, 1.5]}
         style={{ width: '100%', height: '100%', display: 'block' }}
+        camera={{ position: [1.4, 1.6, 3.4], fov: 42 }}
+        onCreated={({ camera }) => {
+          camera.lookAt(0, 0.1, 0)
+          camera.updateProjectionMatrix()
+        }}
       >
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[0.8, 2.2, 2.8]} fov={48} />
 
           {/* Iluminação cinematográfica */}
           <ambientLight intensity={0.42} />

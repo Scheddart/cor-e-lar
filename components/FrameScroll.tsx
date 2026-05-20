@@ -82,9 +82,9 @@ const fragmentShader = `
     // Escala adicional (menor = mais branco em volta)
     uv = (uv - 0.5) / uScale + 0.5;
 
-    // Fora dos limites = fundo branco do design
+    // Fora dos limites = branco puro (mesmo branco do PNG/JPG das frames)
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-      gl_FragColor = vec4(0.957, 0.957, 0.949, 1.0);
+      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
       return;
     }
 
@@ -164,9 +164,9 @@ export default function FrameScroll() {
         uAspect: { value: window.innerWidth / window.innerHeight },
         uImageAspect: { value: 16 / 9 },
         uTexelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
-        // No mobile começa contained (frame 1); no desktop sempre cover
+        // No mobile começa contained com margem mínima (só p/ ver a logo)
         uFitFactor: { value: isMobileNow ? 1.0 : 0.0 },
-        uScale: { value: isMobileNow ? 0.85 : 1.0 },
+        uScale: { value: isMobileNow ? 0.96 : 1.0 },
       },
     })
     materialRef.current = material
@@ -208,41 +208,50 @@ export default function FrameScroll() {
     }
   }, [])
 
-  // Load textures
+  // Load textures — prioriza primeiros frames (visíveis cedo), depois carrega restante
   useEffect(() => {
     const loader = new THREE.TextureLoader()
     let count = 0
 
     const maxAniso = rendererRef.current?.capabilities.getMaxAnisotropy() ?? 8
 
-    for (let i = 0; i < FRAMES_COUNT; i++) {
-      const num = String(i + 1).padStart(3, '0')
-      loader.load(`/frames/ezgif-frame-${num}.png`, (texture) => {
-        // Sem mipmaps — preserva nitidez. LinearFilter para magnification suave
-        texture.generateMipmaps = false
-        texture.minFilter = THREE.LinearFilter
-        texture.magFilter = THREE.LinearFilter
-        texture.anisotropy = maxAniso
-        if ('colorSpace' in texture) {
-          // @ts-ignore — Three.js r152+
-          texture.colorSpace = THREE.SRGBColorSpace
-        }
-        texturesRef.current[i] = texture
-        count++
-        setLoadedCount(count)
+    const loadOne = (i: number) =>
+      new Promise<void>((resolve) => {
+        const num = String(i + 1).padStart(3, '0')
+        loader.load(`/frames/ezgif-frame-${num}.jpg`, (texture) => {
+          texture.generateMipmaps = false
+          texture.minFilter = THREE.LinearFilter
+          texture.magFilter = THREE.LinearFilter
+          texture.anisotropy = maxAniso
+          if ('colorSpace' in texture) {
+            // @ts-ignore — Three.js r152+
+            texture.colorSpace = THREE.SRGBColorSpace
+          }
+          texturesRef.current[i] = texture
+          count++
+          setLoadedCount(count)
 
-        if (i === 0 && materialRef.current) {
-          materialRef.current.uniforms.tFrame.value = texture
-          materialRef.current.uniforms.uImageAspect.value =
-            texture.image.width / texture.image.height
-          // Atualiza texel size com dimensões reais do frame
-          materialRef.current.uniforms.uTexelSize.value.set(
-            1 / texture.image.width,
-            1 / texture.image.height
-          )
-        }
+          if (i === 0 && materialRef.current) {
+            materialRef.current.uniforms.tFrame.value = texture
+            materialRef.current.uniforms.uImageAspect.value =
+              texture.image.width / texture.image.height
+            materialRef.current.uniforms.uTexelSize.value.set(
+              1 / texture.image.width,
+              1 / texture.image.height
+            )
+          }
+          resolve()
+        })
       })
-    }
+
+    // 1ª fase: primeiros 12 frames em paralelo (tela aparece rapidamente)
+    const FIRST_BATCH = Math.min(12, FRAMES_COUNT)
+    Promise.all(Array.from({ length: FIRST_BATCH }, (_, i) => loadOne(i))).then(() => {
+      // 2ª fase: restante em paralelo, sem bloquear
+      for (let i = FIRST_BATCH; i < FRAMES_COUNT; i++) {
+        loadOne(i)
+      }
+    })
   }, [])
 
   // Scroll handler
@@ -266,27 +275,21 @@ export default function FrameScroll() {
       targetFrameRef.current = newTarget
       setDisplayFrame(newTarget + 1)
 
-      // Mobile: interpola entre CONTAIN (começo/fim, com margem branca) e COVER (meio, preenche a tela)
+      // Mobile: somente o COMEÇO fica contained (logo visível), o resto preenche a tela
       const mat = materialRef.current
       if (mat) {
         const isMobileNow = window.matchMedia('(max-width: 767px)').matches
         if (isMobileNow) {
-          // Curvas suaves de transição
-          // 0 → 0.08: contained max     (uFit=1, uScale=0.85)
-          // 0.08 → 0.20: contain → cover
-          // 0.20 → 0.80: cover puro     (uFit=0, uScale=1)
-          // 0.80 → 0.92: cover → contain
-          // 0.92 → 1: contained max
+          // 0 → 0.06: contained (uFit=1, uScale=0.96 — só margem suficiente p/ logo)
+          // 0.06 → 0.18: contain → cover (transição suave)
+          // 0.18 → 1.0: cover puro (preenche a tela até o fim)
           const smoothstep = (a: number, b: number, x: number) => {
             const t = Math.min(Math.max((x - a) / (b - a), 0), 1)
             return t * t * (3 - 2 * t)
           }
-          // contained = 1 nos extremos, 0 no meio
-          const containedAmount =
-            (1 - smoothstep(0.08, 0.20, progress)) + smoothstep(0.80, 0.92, progress)
-          const clamped = Math.min(Math.max(containedAmount, 0), 1)
-          mat.uniforms.uFitFactor.value = clamped
-          mat.uniforms.uScale.value = 1.0 - clamped * 0.15 // 1.0 no meio, 0.85 nos extremos
+          const containedAmount = 1 - smoothstep(0.06, 0.18, progress)
+          mat.uniforms.uFitFactor.value = containedAmount
+          mat.uniforms.uScale.value = 1.0 - containedAmount * 0.04 // 1.0 → 0.96
         } else {
           // Desktop: sempre cover, escala 1.0
           mat.uniforms.uFitFactor.value = 0
@@ -315,7 +318,7 @@ export default function FrameScroll() {
       style={{ height: isMobile ? SECTION_HEIGHT_MOBILE : SECTION_HEIGHT_DESKTOP }}
       id="experiencia"
     >
-      <div className="sticky top-0 h-screen overflow-hidden bg-[#F4F4F2]">
+      <div className="sticky top-0 h-screen overflow-hidden bg-white">
         {/* Canvas — tela cheia limpa, sem overlay */}
         <canvas
           ref={canvasRef}

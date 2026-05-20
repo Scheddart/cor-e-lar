@@ -67,31 +67,16 @@ function darken(hex: string, amount = 0.7) {
   return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
 }
 
-// Variantes da animação 3D do balde — rápido e cinematográfico
+// Variantes do balde — fade + breath de escala, sempre centralizado (sem slide lateral)
 const bucketVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? '100%' : '-100%',
-    rotateY: direction > 0 ? 40 : -40,
-    scale: 0.78,
-    opacity: 0,
-  }),
-  center: {
-    x: '0%',
-    rotateY: 0,
-    scale: 1,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? '-100%' : '100%',
-    rotateY: direction > 0 ? -40 : 40,
-    scale: 0.78,
-    opacity: 0,
-  }),
+  enter: { scale: 0.92, opacity: 0 },
+  center: { scale: 1, opacity: 1 },
+  exit: { scale: 0.92, opacity: 0 },
 }
 
 export default function Gallery() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [[current, direction], setCurrent] = useState<[number, number]>([0, 0])
+  const [current, setCurrent] = useState(0)
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -125,8 +110,7 @@ export default function Gallery() {
 
   const changeTo = (newIndex: number) => {
     if (newIndex === current) return
-    const dir = newIndex > current ? 1 : -1
-    setCurrent([newIndex, dir])
+    setCurrent(newIndex)
   }
 
   const featured = colorPalettes[current]
@@ -181,22 +165,19 @@ export default function Gallery() {
 
         {/* ─── BALDE 3D ─── */}
         <div className="relative w-full h-[460px] sm:h-[520px] md:h-[560px] mb-6">
-          <AnimatePresence mode="wait" custom={direction} initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={current}
-              custom={direction}
               variants={bucketVariants}
               initial="enter"
               animate="center"
               exit="exit"
               transition={{
-                type: 'spring',
-                stiffness: 130,
-                damping: 22,
-                mass: 0.9,
-                opacity: { duration: 0.4, ease: [0.32, 0.72, 0, 1] },
+                scale: { type: 'spring', stiffness: 140, damping: 22, mass: 0.8 },
+                opacity: { duration: 0.45, ease: [0.32, 0.72, 0, 1] },
               }}
               className="absolute inset-0 flex flex-col items-center justify-center"
+              style={{ willChange: 'transform, opacity' }}
             >
               <div
                 className="w-[380px] sm:w-[460px] md:w-[520px]"

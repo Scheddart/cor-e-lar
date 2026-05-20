@@ -180,10 +180,7 @@ export default function Gallery() {
         </div>
 
         {/* ─── BALDE 3D ─── */}
-        <div
-          className="relative w-full h-[420px] sm:h-[460px] md:h-[500px] mb-6"
-          style={{ perspective: '1400px' }}
-        >
+        <div className="relative w-full h-[460px] sm:h-[520px] md:h-[560px] mb-6">
           <AnimatePresence mode="wait" custom={direction} initial={false}>
             <motion.div
               key={current}
@@ -193,7 +190,6 @@ export default function Gallery() {
               animate="center"
               exit="exit"
               transition={{
-                // Spring de mola: entrada rápida e energética
                 type: 'spring',
                 stiffness: 240,
                 damping: 24,
@@ -201,9 +197,11 @@ export default function Gallery() {
                 opacity: { duration: 0.25, ease: 'easeOut' },
               }}
               className="absolute inset-0 flex flex-col items-center justify-center"
-              style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
             >
-              <div className="w-[320px] sm:w-[400px] md:w-[480px] h-[320px] sm:h-[400px] md:h-[480px]">
+              <div
+                className="w-[380px] sm:w-[460px] md:w-[520px]"
+                style={{ height: '420px' }}
+              >
                 <BucketScene3D paintColor={dominantColor} className="w-full h-full" />
               </div>
 

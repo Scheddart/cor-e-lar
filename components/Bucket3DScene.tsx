@@ -244,15 +244,15 @@ interface BucketScene3DProps {
 
 export default function BucketScene3D({ paintColor, className = '' }: BucketScene3DProps) {
   return (
-    <div className={className}>
+    <div className={className} style={{ display: 'block', position: 'relative' }}>
       <Canvas
         shadows
         gl={{ antialias: true, preserveDrawingBuffer: false }}
-        dpr={[1, 2]}
-        camera={{ position: [2.4, 1.3, 4], fov: 38 }}
+        dpr={[1, 1.5]}
+        style={{ width: '100%', height: '100%', display: 'block' }}
       >
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[2.4, 1.3, 4]} fov={38} />
+          <PerspectiveCamera makeDefault position={[1.5, 0.2, 3.2]} fov={58} />
 
           {/* Iluminação cinematográfica */}
           <ambientLight intensity={0.42} />

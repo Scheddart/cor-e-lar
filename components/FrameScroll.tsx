@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 
-const FRAMES_COUNT = 102
+const FRAMES_COUNT = 104
 const SECTION_HEIGHT_DESKTOP = '500vh'
 const SECTION_HEIGHT_MOBILE = '350vh' // mais curto pra não cansar o swipe no celular
 

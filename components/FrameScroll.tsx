@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import * as THREE from 'three'
 
 const FRAMES_COUNT = 104
 const SECTION_HEIGHT_DESKTOP = '500vh'
@@ -46,78 +45,22 @@ const PHRASES = [
   },
 ]
 
-const vertexShader = `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-const fragmentShader = `
-  uniform sampler2D tFrame;
-  uniform float uAspect;
-  uniform float uImageAspect;
-  uniform vec2 uTexelSize;
-  uniform float uFitFactor;    // 0 = cover (preenche), 1 = contain (cabe inteiro)
-  uniform float uScale;        // < 1.0 deixa margem extra de branco
-  varying vec2 vUv;
-
-  void main() {
-    vec2 uv = vUv;
-    float ratio = uAspect / uImageAspect;
-
-    // Interpola continuamente entre COVER (uFitFactor=0) e CONTAIN (uFitFactor=1)
-    float xMult, yMult;
-    if (ratio > 1.0) {
-      xMult = mix(1.0, ratio, uFitFactor);
-      yMult = mix(1.0 / ratio, 1.0, uFitFactor);
-    } else {
-      xMult = mix(ratio, 1.0, uFitFactor);
-      yMult = mix(1.0, 1.0 / ratio, uFitFactor);
-    }
-    uv.x = (vUv.x - 0.5) * xMult + 0.5;
-    uv.y = (vUv.y - 0.5) * yMult + 0.5;
-
-    // Escala adicional (menor = mais branco em volta)
-    uv = (uv - 0.5) / uScale + 0.5;
-
-    // Fora dos limites = branco puro (mesmo branco do PNG/JPG das frames)
-    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-      return;
-    }
-
-    // Unsharp mask 5-tap p/ nitidez
-    vec4 center = texture2D(tFrame, uv);
-    vec4 n = texture2D(tFrame, uv + vec2(0.0, uTexelSize.y));
-    vec4 s = texture2D(tFrame, uv - vec2(0.0, uTexelSize.y));
-    vec4 e = texture2D(tFrame, uv + vec2(uTexelSize.x, 0.0));
-    vec4 w = texture2D(tFrame, uv - vec2(uTexelSize.x, 0.0));
-
-    vec4 avg = (n + s + e + w) * 0.25;
-    float amount = 0.35;
-    vec4 sharp = center + (center - avg) * amount;
-
-    gl_FragColor = vec4(clamp(sharp.rgb, 0.0, 1.0), 1.0);
-  }
-`
-
 export default function FrameScroll() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
-  const materialRef = useRef<THREE.ShaderMaterial | null>(null)
-  const texturesRef = useRef<THREE.Texture[]>([])
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
+  const imagesRef = useRef<HTMLImageElement[]>([])
   const currentFrameRef = useRef(0)
   const targetFrameRef = useRef(0)
+  const effectiveCountRef = useRef(FRAMES_COUNT)
+  const progressRef = useRef(0)
   const rafRef = useRef<number>()
   const [loadedCount, setLoadedCount] = useState(0)
   const [activePhrase, setActivePhrase] = useState<number | null>(null)
   const [displayFrame, setDisplayFrame] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Detecta mobile (uniforms são atualizados no scroll handler)
+  // Detecta mobile
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(max-width: 767px)')
@@ -127,76 +70,105 @@ export default function FrameScroll() {
     return () => mq.removeEventListener('change', update)
   }, [])
 
-  const totalLoaded = loadedCount === FRAMES_COUNT
-  const canShow = loadedCount >= 1 // libera a tela assim que o primeiro frame chega
+  const totalLoaded = loadedCount === effectiveCountRef.current
+  const canShow = loadedCount >= 1
 
-  // Init Three.js
+  // Init Canvas 2D + RAF loop
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      alpha: false,
-      powerPreference: 'high-performance',
-    })
+    const isMobileDevice = window.matchMedia('(max-width: 767px)').matches
+    // Mobile DPR=1 (halves GPU pixels). Desktop capped to frame resolution (1920px)
+    const dpr = isMobileDevice
+      ? 1
+      : Math.max(1, Math.min(window.devicePixelRatio, 1920 / Math.max(window.innerWidth, 1)))
 
-    // DPR adaptativo: limita ao que faz sentido para frames 1920x1080
-    // Se o viewport é 1440 e o frame é 1920, DPR 1 = downscale leve (ótimo)
-    // Se o viewport é 1920+, DPR 1 = 1:1 (perfeito)
-    // Evita upscale pesado que borra
-    const optimalDPR = Math.min(window.devicePixelRatio, 1920 / Math.max(window.innerWidth, 1))
-    renderer.setPixelRatio(Math.max(1, optimalDPR))
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    rendererRef.current = renderer
+    const ctx = canvas.getContext('2d', { alpha: false })
+    if (!ctx) return
+    ctxRef.current = ctx
 
-    const scene = new THREE.Scene()
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+    const drawFrame = (img: HTMLImageElement) => {
+      const c = canvasRef.current
+      const context = ctxRef.current
+      if (!c || !context || !img.naturalWidth) return
 
-    const geometry = new THREE.PlaneGeometry(2, 2)
-    const isMobileNow = window.matchMedia('(max-width: 767px)').matches
-    const material = new THREE.ShaderMaterial({
-      vertexShader,
-      fragmentShader,
-      uniforms: {
-        tFrame: { value: null },
-        uAspect: { value: window.innerWidth / window.innerHeight },
-        uImageAspect: { value: 16 / 9 },
-        uTexelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
-        // No mobile começa contained com margem mínima (só p/ ver a logo)
-        uFitFactor: { value: isMobileNow ? 1.0 : 0.0 },
-        uScale: { value: isMobileNow ? 0.96 : 1.0 },
-      },
-    })
-    materialRef.current = material
+      const cw = c.width
+      const ch = c.height
+      const iw = img.naturalWidth
+      const ih = img.naturalHeight
 
-    const mesh = new THREE.Mesh(geometry, material)
-    scene.add(mesh)
+      // Branco fora dos limites da imagem (matches frame background)
+      context.fillStyle = '#FFFFFF'
+      context.fillRect(0, 0, cw, ch)
+
+      const canvasAspect = cw / ch
+      const imageAspect = iw / ih
+
+      // Mobile: 0→0.06 contained (logo visível), 0.06→0.18 transição, 0.18→1 cover
+      // Desktop: sempre cover
+      const isMobileNow = window.matchMedia('(max-width: 767px)').matches
+      let containedAmount = 0
+      let extraScale = 1
+      if (isMobileNow) {
+        const smoothstep = (a: number, b: number, x: number) => {
+          const t = Math.min(Math.max((x - a) / (b - a), 0), 1)
+          return t * t * (3 - 2 * t)
+        }
+        containedAmount = 1 - smoothstep(0.06, 0.18, progressRef.current)
+        extraScale = 1.0 - containedAmount * 0.04 // 1.0 → 0.96
+      }
+
+      // Cover scale (preenche)
+      const coverScale = canvasAspect > imageAspect ? cw / iw : ch / ih
+      // Contain scale (cabe inteiro) com margem extraScale
+      const containScale = (canvasAspect > imageAspect ? ch / ih : cw / iw) * extraScale
+
+      // Interpola entre cover e contain
+      const scale = containedAmount * containScale + (1 - containedAmount) * coverScale
+      const drawW = iw * scale
+      const drawH = ih * scale
+      const drawX = (cw - drawW) / 2
+      const drawY = (ch - drawH) / 2
+
+      context.drawImage(img, drawX, drawY, drawW, drawH)
+    }
+
+    const drawCurrentFrame = () => {
+      const img = imagesRef.current[currentFrameRef.current]
+      if (img) drawFrame(img)
+    }
+    // Expose for first-frame draw from the load callback
+    ;(canvas as any).__drawCurrent = drawCurrentFrame
 
     const onResize = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight)
-      material.uniforms.uAspect.value = window.innerWidth / window.innerHeight
+      canvas.width = Math.round(window.innerWidth * dpr)
+      canvas.height = Math.round(window.innerHeight * dpr)
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
+      drawCurrentFrame()
     }
+    onResize()
     window.addEventListener('resize', onResize)
 
     const loop = () => {
       const current = currentFrameRef.current
       const target = targetFrameRef.current
+      let dirty = false
 
       if (current !== target) {
         const next = current + (target - current) * 0.14
         const rounded = Math.round(next)
         const frame = rounded !== current ? rounded : target
-        currentFrameRef.current = frame
+        if (frame !== currentFrameRef.current) {
+          currentFrameRef.current = frame
+          dirty = true
+        }
       }
 
-      const tex = texturesRef.current[currentFrameRef.current]
-      if (tex && material.uniforms.tFrame.value !== tex) {
-        material.uniforms.tFrame.value = tex
+      if (dirty) {
+        drawCurrentFrame()
       }
-
-      renderer.render(scene, camera)
       rafRef.current = requestAnimationFrame(loop)
     }
     rafRef.current = requestAnimationFrame(loop)
@@ -204,51 +176,41 @@ export default function FrameScroll() {
     return () => {
       window.removeEventListener('resize', onResize)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      renderer.dispose()
     }
   }, [])
 
-  // Load textures — prioriza primeiros frames (visíveis cedo), depois carrega restante
+  // Load images — mobile loads every 4th frame (26 ≈ 2MB), desktop every 2nd (52 ≈ 4MB)
   useEffect(() => {
-    const loader = new THREE.TextureLoader()
     let count = 0
+    const isMobileDevice = window.matchMedia('(max-width: 767px)').matches
+    const step = isMobileDevice ? 4 : 2
+    const effectiveCount = Math.ceil(FRAMES_COUNT / step)
+    effectiveCountRef.current = effectiveCount
 
-    const maxAniso = rendererRef.current?.capabilities.getMaxAnisotropy() ?? 8
-
-    const loadOne = (i: number) =>
+    const loadOne = (idx: number) =>
       new Promise<void>((resolve) => {
-        const num = String(i + 1).padStart(3, '0')
-        loader.load(`/frames/ezgif-frame-${num}.jpg`, (texture) => {
-          texture.generateMipmaps = false
-          texture.minFilter = THREE.LinearFilter
-          texture.magFilter = THREE.LinearFilter
-          texture.anisotropy = maxAniso
-          if ('colorSpace' in texture) {
-            // @ts-ignore — Three.js r152+
-            texture.colorSpace = THREE.SRGBColorSpace
-          }
-          texturesRef.current[i] = texture
+        const img = new Image()
+        const num = String(idx * step + 1).padStart(3, '0')
+        img.decoding = 'async'
+        img.onload = () => {
+          imagesRef.current[idx] = img
           count++
           setLoadedCount(count)
 
-          if (i === 0 && materialRef.current) {
-            materialRef.current.uniforms.tFrame.value = texture
-            materialRef.current.uniforms.uImageAspect.value =
-              texture.image.width / texture.image.height
-            materialRef.current.uniforms.uTexelSize.value.set(
-              1 / texture.image.width,
-              1 / texture.image.height
-            )
+          // Trigger initial draw as soon as the first frame is available
+          if (idx === 0) {
+            const canvas = canvasRef.current as any
+            if (canvas && canvas.__drawCurrent) canvas.__drawCurrent()
           }
           resolve()
-        })
+        }
+        img.onerror = () => resolve()
+        img.src = `/frames/ezgif-frame-${num}.jpg`
       })
 
-    // 1ª fase: primeiros 12 frames em paralelo (tela aparece rapidamente)
-    const FIRST_BATCH = Math.min(12, FRAMES_COUNT)
-    Promise.all(Array.from({ length: FIRST_BATCH }, (_, i) => loadOne(i))).then(() => {
-      // 2ª fase: restante em paralelo, sem bloquear
-      for (let i = FIRST_BATCH; i < FRAMES_COUNT; i++) {
+    // Load frame 1 alone first → fastest time-to-visible (pairs with <link rel="preload">)
+    loadOne(0).then(() => {
+      for (let i = 1; i < effectiveCount; i++) {
         loadOne(i)
       }
     })
@@ -270,32 +232,14 @@ export default function FrameScroll() {
       if (scrolled < -viewportH || scrolled > scrollable + viewportH) return
 
       const progress = Math.min(Math.max(scrolled / scrollable, 0), 1)
+      progressRef.current = progress
 
-      const newTarget = Math.round(progress * (FRAMES_COUNT - 1))
+      const isMobileNow = window.matchMedia('(max-width: 767px)').matches
+      const step = isMobileNow ? 4 : 2
+      const effectiveCount = effectiveCountRef.current
+      const newTarget = Math.round(progress * (effectiveCount - 1))
       targetFrameRef.current = newTarget
-      setDisplayFrame(newTarget + 1)
-
-      // Mobile: somente o COMEÇO fica contained (logo visível), o resto preenche a tela
-      const mat = materialRef.current
-      if (mat) {
-        const isMobileNow = window.matchMedia('(max-width: 767px)').matches
-        if (isMobileNow) {
-          // 0 → 0.06: contained (uFit=1, uScale=0.96 — só margem suficiente p/ logo)
-          // 0.06 → 0.18: contain → cover (transição suave)
-          // 0.18 → 1.0: cover puro (preenche a tela até o fim)
-          const smoothstep = (a: number, b: number, x: number) => {
-            const t = Math.min(Math.max((x - a) / (b - a), 0), 1)
-            return t * t * (3 - 2 * t)
-          }
-          const containedAmount = 1 - smoothstep(0.06, 0.18, progress)
-          mat.uniforms.uFitFactor.value = containedAmount
-          mat.uniforms.uScale.value = 1.0 - containedAmount * 0.04 // 1.0 → 0.96
-        } else {
-          // Desktop: sempre cover, escala 1.0
-          mat.uniforms.uFitFactor.value = 0
-          mat.uniforms.uScale.value = 1.0
-        }
-      }
+      setDisplayFrame(newTarget * step + 1)
 
       let active: number | null = null
       PHRASES.forEach((p, i) => {
@@ -309,7 +253,7 @@ export default function FrameScroll() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const loadPct = Math.round((loadedCount / FRAMES_COUNT) * 100)
+  const loadPct = Math.round((loadedCount / effectiveCountRef.current) * 100)
 
   return (
     <section
@@ -319,24 +263,17 @@ export default function FrameScroll() {
       id="experiencia"
     >
       <div className="sticky top-0 h-screen overflow-hidden bg-white">
-        {/* Canvas — tela cheia limpa, sem overlay */}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
-          style={{
-            opacity: canShow ? 1 : 0,
-            transition: 'opacity 0.4s ease',
-            imageRendering: 'crisp-edges',
-          }}
+          style={{ background: '#F4F4F2' }}
         />
-
-        {/* (sem fade — corte direto para a próxima seção) */}
 
         {/* Frases — alternam lado no desktop, centralizadas embaixo no mobile */}
         {PHRASES.map((p, i) => {
           const isActive = activePhrase === i
           const desktopSide = p.side === 'left' ? 'md:left-12 xl:left-20 md:text-left' : 'md:right-12 xl:right-20 md:text-right'
-          const baseY = isMobile ? 0 : -50 // % para vertical center no desktop
+          const baseY = isMobile ? 0 : -50
           const offsetY = isActive ? 0 : 24
           return (
             <div
@@ -391,12 +328,17 @@ export default function FrameScroll() {
           {String(displayFrame).padStart(3, '0')} / {String(FRAMES_COUNT).padStart(3, '0')}
         </div>
 
-        {/* Splash inicial — só até o primeiro frame */}
-        {!canShow && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 bg-[#F4F4F2]">
-            <div className="w-8 h-8 border-2 border-[#0E1B3C]/15 border-t-[#F28C28] rounded-full animate-spin" />
-          </div>
-        )}
+        {/* Splash inicial — fica em cima e some quando o primeiro frame chega */}
+        <div
+          className="absolute inset-0 flex items-center justify-center z-20 bg-[#F4F4F2]"
+          style={{
+            opacity: canShow ? 0 : 1,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: canShow ? 'none' : 'auto',
+          }}
+        >
+          <div className="w-8 h-8 border-2 border-[#0E1B3C]/15 border-t-[#F28C28] rounded-full animate-spin" />
+        </div>
 
         {/* Indicador discreto enquanto carrega o resto em background */}
         {canShow && !totalLoaded && (

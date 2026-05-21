@@ -1,38 +1,47 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import Lenis from 'lenis'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger)
-}
+import { useEffect } from 'react'
 
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
-  const lenisRef = useRef<Lenis | null>(null)
-
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+    // Native scroll is faster on mobile — Lenis intercepts momentum scroll on iOS/Android
+    if (window.matchMedia('(max-width: 767px)').matches) return
 
-    lenisRef.current = lenis
+    let cancelled = false
+    let cleanup: (() => void) | null = null
 
-    // Sync Lenis with GSAP ScrollTrigger
-    lenis.on('scroll', ScrollTrigger.update)
-    gsap.ticker.add((time: number) => {
-      lenis.raf(time * 1000)
+    // Lazy-load Lenis + GSAP after first paint (removes ~45KB from initial bundle)
+    Promise.all([
+      import('lenis'),
+      import('gsap'),
+      import('gsap/ScrollTrigger'),
+    ]).then(([lenisMod, gsapMod, scrollTriggerMod]) => {
+      if (cancelled) return
+      const Lenis = lenisMod.default
+      const { gsap } = gsapMod
+      const { ScrollTrigger } = scrollTriggerMod
+
+      gsap.registerPlugin(ScrollTrigger)
+      const lenis = new Lenis({
+        duration: 1.2,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+      })
+
+      lenis.on('scroll', ScrollTrigger.update)
+      const tickerCb = (time: number) => lenis.raf(time * 1000)
+      gsap.ticker.add(tickerCb)
+      gsap.ticker.lagSmoothing(0)
+
+      cleanup = () => {
+        lenis.destroy()
+        gsap.ticker.remove(tickerCb)
+      }
     })
-    gsap.ticker.lagSmoothing(0)
 
     return () => {
-      lenis.destroy()
-      gsap.ticker.remove((time: number) => {
-        lenis.raf(time * 1000)
-      })
+      cancelled = true
+      if (cleanup) cleanup()
     }
   }, [])
 

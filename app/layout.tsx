@@ -1,6 +1,21 @@
 import type { Metadata } from 'next'
+import { Bebas_Neue, Inter } from 'next/font/google'
 import './globals.css'
 import SmoothScroll from '@/components/SmoothScroll'
+
+const bebasNeue = Bebas_Neue({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-bebas',
+  display: 'swap',
+})
+
+const inter = Inter({
+  weight: ['300', '400', '500', '600'],
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Cor & Lar Tintas | Leme, SP',
@@ -20,7 +35,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${bebasNeue.variable} ${inter.variable}`}>
+      <head>
+        <link rel="preload" as="image" href="/frames/ezgif-frame-001.jpg" fetchPriority="high" />
+      </head>
       <body>
         <SmoothScroll>
           {children}

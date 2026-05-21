@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${bebasNeue.variable} ${inter.variable}`}>
       <head>
-        <link rel="preload" as="image" href="/frames/ezgif-frame-001.jpg" fetchPriority="high" />
+        <link rel="preload" as="image" href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/frames/ezgif-frame-001.jpg`} fetchPriority="high" />
       </head>
       <body>
         <SmoothScroll>

@@ -205,7 +205,7 @@ export default function FrameScroll() {
           resolve()
         }
         img.onerror = () => resolve()
-        img.src = `/frames/ezgif-frame-${num}.jpg`
+        img.src = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/frames/ezgif-frame-${num}.jpg`
       })
 
     // Load frame 1 alone first → fastest time-to-visible (pairs with <link rel="preload">)
